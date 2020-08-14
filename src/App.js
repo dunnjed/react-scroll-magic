@@ -62,7 +62,10 @@ const Window = ({
   );
   console.log("rowsLength: ", rows.length);
   console.log("visibleRowsLength: ", visibleRows.length);
-  console.log("visibleRows: ", visibleRows.map(({ value }) => value));
+  console.log(
+    "visibleRows: ",
+    visibleRows.map(({ value }) => value)
+  );
   return (
     <div className="window">
       <div style={{ height: `${topRowHeight}px`, backgroundColor: "green" }} />
@@ -92,7 +95,7 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
 
   const [numberOfVisibleRows, setNumberOfVisibleRows] = useState(0);
 
-  const rowRenderer = row => {
+  const rowRenderer = (row) => {
     return (
       <Row
         key={row.originalIndex + " " + row.value}
@@ -123,7 +126,7 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
       <div
         onScroll={() => {
           const _numRowsOutOfViewOnTop =
-            Math.floor(listRef.current.scrollTop / ROW_HEIGHT) + 1; // WAS 0
+            Math.floor(listRef.current.scrollTop / ROW_HEIGHT) + 0; // WAS 0
           setNumRowsOutOfViewOnTop(_numRowsOutOfViewOnTop);
           setTopRowHeight(_numRowsOutOfViewOnTop * ROW_HEIGHT);
 
