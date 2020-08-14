@@ -44,22 +44,10 @@ const Row = ({ num, index, setClickedIndex, rowHeight, clickHandler }) => {
   );
 };
 
-const Window = ({
-  rows,
-  rowRenderer,
-  windowMetrics,
-  numberOfVisibleRows,
-  setRowsCache,
-  visibleRows
-}) => {
+const Window = ({ rowRenderer, windowMetrics, visibleRows }) => {
   const windowRef = useRef();
 
-  const {
-    topRowHeight,
-    numRowsOutOfViewOnTop,
-    bottomRowHeight,
-    numRowsOutOfViewOnBottom
-  } = windowMetrics;
+  const { topRowHeight, bottomRowHeight } = windowMetrics;
 
   // const extraAbove = 0; // This will cause extra rows to be rendered above the window
   // const extraBelow = 1; // This will cause extra rows to be rendered below the bottom of the window, cannot be less than 1.
@@ -133,13 +121,10 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
   };
 
   useEffect(() => {
-    console.log("IN USE EFFECT");
     setNumberOfVisibleRows(
       Math.floor(listRef.current.offsetHeight / ROW_HEIGHT)
     );
-  }, [numbers.length]);
 
-  useEffect(() => {
     const _rowsCache = numbers.map((number, index) => ({
       value: number,
       height: ROW_HEIGHT,
@@ -147,18 +132,19 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
     }));
 
     setRowsCache(_rowsCache);
+  }, [numbers.length]);
 
+  useEffect(() => {
     const extraAbove = 0; // This will cause extra rows to be rendered above the window
     const extraBelow = 1; // This will cause extra rows to be rendered below the bottom of the window, cannot be less than 1.
-    const _visibleRows = _rowsCache.slice(
+    const _visibleRows = rowsCache.slice(
       windowMetrics.numRowsOutOfViewOnTop - extraAbove < 0
         ? 0
         : windowMetrics.numRowsOutOfViewOnTop - extraAbove,
       windowMetrics.numRowsOutOfViewOnTop + numberOfVisibleRows + extraBelow
     );
-    console.log("FIRST: ", _visibleRows);
     setVisibleRows(_visibleRows);
-  }, [windowMetrics, numberOfVisibleRows]);
+  }, [rowsCache, windowMetrics, numberOfVisibleRows]);
 
   return (
     <div>
@@ -170,17 +156,6 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
 
           const _numRowsOutOfViewOnBottom =
             numbers.length - (_numRowsOutOfViewOnTop + numberOfVisibleRows);
-
-          const extraAbove = 0; // This will cause extra rows to be rendered above the window
-          const extraBelow = 1; // This will cause extra rows to be rendered below the bottom of the window, cannot be less than 1.
-          const _visibleRows = rowsCache.slice(
-            _numRowsOutOfViewOnTop - extraAbove < 0
-              ? 0
-              : _numRowsOutOfViewOnTop - extraAbove,
-            _numRowsOutOfViewOnTop + numberOfVisibleRows + extraBelow
-          );
-          console.log("FIRST: ", _visibleRows);
-          setVisibleRows(_visibleRows);
 
           setWindowMetrics({
             topRowHeight: _numRowsOutOfViewOnTop * ROW_HEIGHT,
@@ -194,11 +169,8 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
       >
         <Window
           {...{
-            rows: rowsCache,
             rowRenderer,
             windowMetrics,
-            numberOfVisibleRows,
-            setRowsCache,
             visibleRows
           }}
         />
