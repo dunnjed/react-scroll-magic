@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import "./styles.css";
 import { numbers1, numbers2 } from "./numbers";
 
@@ -7,7 +7,7 @@ const PanelType = {
   PANEL_2: "PANEL_2"
 };
 
-const Row = ({ num, index, setClickedIndex, rowHeight }) => {
+const Row = ({ num, index, setClickedIndex, rowHeight, clickHandler }) => {
   const [showSubmenu, setShowSubmenu] = useState(false);
   const rowRef = useRef();
 
@@ -27,6 +27,7 @@ const Row = ({ num, index, setClickedIndex, rowHeight }) => {
               setShowSubmenu(!showSubmenu);
               setTimeout(() => {
                 console.log("row new height: ", rowRef.current.offsetHeight);
+                clickHandler(index, rowRef.current.offsetHeight);
               });
             }}
           >
@@ -46,28 +47,37 @@ const Row = ({ num, index, setClickedIndex, rowHeight }) => {
 const Window = ({
   rows,
   rowRenderer,
-  topRowHeight,
-  numRowsOutOfViewOnTop,
-  bottomRowHeight,
-  numRowsOutOfViewOnBottom,
-  numberOfVisibleRows
+  windowMetrics,
+  numberOfVisibleRows,
+  setRowsCache,
+  visibleRows
 }) => {
-  const extraAbove = 0; // This will cause extra rows to be rendered above the window
-  const extraBelow = 1; // This will cause extra rows to be rendered below the bottom of the window, cannot be less than 1.
-  const visibleRows = rows.slice(
-    numRowsOutOfViewOnTop - extraAbove < 0
-      ? 0
-      : numRowsOutOfViewOnTop - extraAbove,
-    numRowsOutOfViewOnTop + numberOfVisibleRows + extraBelow
-  );
-  console.log("rowsLength: ", rows.length);
-  console.log("visibleRowsLength: ", visibleRows.length);
+  const windowRef = useRef();
+
+  const {
+    topRowHeight,
+    numRowsOutOfViewOnTop,
+    bottomRowHeight,
+    numRowsOutOfViewOnBottom
+  } = windowMetrics;
+
+  // const extraAbove = 0; // This will cause extra rows to be rendered above the window
+  // const extraBelow = 1; // This will cause extra rows to be rendered below the bottom of the window, cannot be less than 1.
+  // const visibleRows = rows.slice(
+  //   numRowsOutOfViewOnTop - extraAbove < 0
+  //     ? 0
+  //     : numRowsOutOfViewOnTop - extraAbove,
+  //   numRowsOutOfViewOnTop + numberOfVisibleRows + extraBelow
+  // );
+  // console.log("rowsLength: ", rows.length);
+  // console.log("visibleRowsLength: ", visibleRows.length);
   console.log(
     "visibleRows: ",
-    visibleRows.map(({ value }) => value)
+    // visibleRows.map(({ value }) => value)
+    visibleRows.map((row) => row)
   );
   return (
-    <div className="window">
+    <div className="window" ref={windowRef}>
       <div style={{ height: `${topRowHeight}px`, backgroundColor: "green" }} />
       {visibleRows.map(rowRenderer)}
       <div
@@ -80,20 +90,32 @@ const Window = ({
 const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
   const ROW_HEIGHT = 60;
 
-  const rowsCache = numbers.map((number, index) => ({
-    value: number,
-    height: ROW_HEIGHT,
-    originalIndex: index
-  }));
+  // const rowsCache = numbers.map((number, index) => ({
+  //   value: number,
+  //   height: ROW_HEIGHT,
+  //   originalIndex: index
+  // }));
+
+  const [rowsCache, setRowsCache] = useState([]);
 
   const listRef = useRef();
-  const [topRowHeight, setTopRowHeight] = useState(0);
-  const [numRowsOutOfViewOnTop, setNumRowsOutOfViewOnTop] = useState(0);
 
-  const [bottomRowHeight, setBottomRowHeight] = useState(0);
-  const [numRowsOutOfViewOnBottom, setNumRowsOutOfViewOnBottom] = useState(0);
+  const [windowMetrics, setWindowMetrics] = useState({
+    topRowHeight: 0,
+    numRowsOutOfViewOnTop: 0,
+    bottomRowHeight: 0,
+    numRowsOutOfViewOnBottom: 0
+  });
 
+  const [visibleRows, setVisibleRows] = useState([]);
   const [numberOfVisibleRows, setNumberOfVisibleRows] = useState(0);
+
+  const clickHandler = (index, newHeight) => {
+    console.log(rowsCache[index]);
+    const newRowsCache = rowsCache.map((row) => ({ ...row }));
+    newRowsCache[index].height = newHeight;
+    setRowsCache(newRowsCache);
+  };
 
   const rowRenderer = (row) => {
     return (
@@ -103,22 +125,40 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
           num: row.value,
           index: row.originalIndex,
           setClickedIndex,
-          rowHeight: ROW_HEIGHT
+          rowHeight: ROW_HEIGHT,
+          clickHandler
         }}
       />
     );
   };
 
   useEffect(() => {
-    console.log("topRowHeight: ", topRowHeight);
-    console.log("num rows out of view: ", numRowsOutOfViewOnTop);
-  }, [topRowHeight, numRowsOutOfViewOnTop]);
-
-  useEffect(() => {
+    console.log("IN USE EFFECT");
     setNumberOfVisibleRows(
       Math.floor(listRef.current.offsetHeight / ROW_HEIGHT)
     );
   }, [numbers.length]);
+
+  useEffect(() => {
+    const _rowsCache = numbers.map((number, index) => ({
+      value: number,
+      height: ROW_HEIGHT,
+      originalIndex: index
+    }));
+
+    setRowsCache(_rowsCache);
+
+    const extraAbove = 0; // This will cause extra rows to be rendered above the window
+    const extraBelow = 1; // This will cause extra rows to be rendered below the bottom of the window, cannot be less than 1.
+    const _visibleRows = _rowsCache.slice(
+      windowMetrics.numRowsOutOfViewOnTop - extraAbove < 0
+        ? 0
+        : windowMetrics.numRowsOutOfViewOnTop - extraAbove,
+      windowMetrics.numRowsOutOfViewOnTop + numberOfVisibleRows + extraBelow
+    );
+    console.log("FIRST: ", _visibleRows);
+    setVisibleRows(_visibleRows);
+  }, [windowMetrics, numberOfVisibleRows]);
 
   return (
     <div>
@@ -127,19 +167,27 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
         onScroll={() => {
           const _numRowsOutOfViewOnTop =
             Math.floor(listRef.current.scrollTop / ROW_HEIGHT) + 0; // WAS 0
-          setNumRowsOutOfViewOnTop(_numRowsOutOfViewOnTop);
-          setTopRowHeight(_numRowsOutOfViewOnTop * ROW_HEIGHT);
 
-          // Get total number of rows
-          // and subtract those rows that exist above off screen
-          // plus the number that are visible in the window,
-          // and this will leave the total number that exist beneath.
           const _numRowsOutOfViewOnBottom =
-            numbers.length -
-            (_numRowsOutOfViewOnTop +
-              Math.floor(listRef.current.offsetHeight / ROW_HEIGHT));
-          setNumRowsOutOfViewOnBottom(_numRowsOutOfViewOnBottom);
-          setBottomRowHeight(_numRowsOutOfViewOnBottom * ROW_HEIGHT);
+            numbers.length - (_numRowsOutOfViewOnTop + numberOfVisibleRows);
+
+          const extraAbove = 0; // This will cause extra rows to be rendered above the window
+          const extraBelow = 1; // This will cause extra rows to be rendered below the bottom of the window, cannot be less than 1.
+          const _visibleRows = rowsCache.slice(
+            _numRowsOutOfViewOnTop - extraAbove < 0
+              ? 0
+              : _numRowsOutOfViewOnTop - extraAbove,
+            _numRowsOutOfViewOnTop + numberOfVisibleRows + extraBelow
+          );
+          console.log("FIRST: ", _visibleRows);
+          setVisibleRows(_visibleRows);
+
+          setWindowMetrics({
+            topRowHeight: _numRowsOutOfViewOnTop * ROW_HEIGHT,
+            numRowsOutOfViewOnTop: _numRowsOutOfViewOnTop,
+            bottomRowHeight: _numRowsOutOfViewOnBottom * ROW_HEIGHT,
+            numRowsOutOfViewOnBottom: _numRowsOutOfViewOnBottom
+          });
         }}
         ref={listRef}
         className="list"
@@ -148,11 +196,10 @@ const Panel = ({ clickedIndex, setClickedIndex, numbers }) => {
           {...{
             rows: rowsCache,
             rowRenderer,
-            topRowHeight,
-            numRowsOutOfViewOnTop,
-            bottomRowHeight,
-            numRowsOutOfViewOnBottom,
-            numberOfVisibleRows
+            windowMetrics,
+            numberOfVisibleRows,
+            setRowsCache,
+            visibleRows
           }}
         />
       </div>
